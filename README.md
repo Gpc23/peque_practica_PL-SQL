@@ -155,3 +155,161 @@ exec mostrar_upt;
 [![6.png](https://i.postimg.cc/zXTcJsX3/6.png)](https://postimg.cc/MvKD5rB8)
 
 
+## 7. Hacer un procedimiento llamado mostrar_codigo_fuente  que reciba el nombre de otro procedimiento y muestre su código fuente. (DBA_SOURCE)
+
+```
+CREATE OR REPLACE PROCEDURE mostrar_cod (p_nombre dba_source.name%type)
+is
+    cursor c_codigo is
+        SELECT text
+        from dba_source
+        where name=p_nombre;
+begin
+    for v_codigo in c_codigo loop
+        dbms_output.put_line(v_codigo.text);
+    end loop;
+end;
+/
+
+exec mostrar_cod('usuarios_por_tablespace');
+```
+
+### No funciona bien
+
+## 8. Hacer un procedimiento llamado mostrar_privilegios_usuario que reciba el nombre de un usuario y muestre sus privilegios de sistema y sus privilegios sobre objetos. (DBA_SYS_PRIVS y DBA_TAB_PRIVS)
+
+```
+CREATE OR REPLACE PROCEDURE mostrar_privilegios_usuario (
+    p_usuario IN VARCHAR2
+)
+IS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Privilegios de Sistema:');
+    FOR sys_priv IN (SELECT privilege
+                     FROM dba_sys_privs
+                     WHERE grantee = p_usuario)
+    LOOP
+        DBMS_OUTPUT.PUT_LINE(sys_priv.privilege);
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Privilegios sobre Objetos:');
+    FOR tab_priv IN (SELECT privilege, table_name
+                     FROM dba_tab_privs
+                     WHERE grantee = p_usuario)
+    LOOP
+        DBMS_OUTPUT.PUT_LINE(tab_priv.privilege || ' en ' || tab_priv.table_name);
+    END LOOP;
+END;
+/
+
+exec mostrar_privilegios_usuario('SYS');
+```
+
+[![8.png](https://i.postimg.cc/BZrzfS3d/8.png)](https://postimg.cc/pyBCDtpZ)
+
+
+## 9. Realiza un procedimiento llamado listar_comisiones que nos muestre por pantalla un listado de las comisiones de los empleados agrupados según la localidad donde está ubicado su departamento con el siguiente formato:
+
+```
+Localidad NombreLocalidad
+	
+Departamento: NombreDepartamento
+
+		Empleado1 ……. Comisión 1
+		Empleado2 ……. Comisión 2
+		.	
+		.
+		.
+		Empleadon ……. Comision n
+
+	Total Comisiones en el Departamento NombreDepartamento: SumaComisiones
+
+	Departamento: NombreDepartamento
+
+		Empleado1 ……. Comisión 1
+		Empleado2 ……. Comisión 2
+		.	
+		.		.
+		Empleadon ……. Comision n
+
+	Total Comisiones en el Departamento NombreDepartamento: SumaComisiones
+	.	
+	.
+Total Comisiones en la Localidad NombreLocalidad: SumaComisionesLocalidad
+
+Localidad NombreLocalidad
+.
+.
+
+Total Comisiones en la Empresa: TotalComisiones
+
+```
+
+Nota: Los nombres de localidades, departamentos y empleados deben aparecer por orden alfabético.
+
+Si alguno de los departamentos no tiene ningún empleado con comisiones, aparecerá un mensaje informando de ello en lugar de la lista de empleados.
+
+El procedimiento debe gestionar adecuadamente las siguientes excepciones:
+
+a)	La tabla Empleados está vacía.
+b)	Alguna comisión es mayor que 10000.
+
+
+Codigo:
+
+```
+CREATE OR REPLACE PROCEDURE listar_comisiones IS
+  v_total_empresa NUMBER := 0;
+  v_total_localidad NUMBER;
+  v_total_departamento NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_total_empresa FROM emp;
+
+  IF v_total_empresa = 0 THEN
+    DBMS_OUTPUT.PUT_LINE('La tabla Empleados está vacía.');
+    RETURN;
+  END IF;
+
+  FOR loc_rec IN (SELECT DISTINCT loc FROM emp ORDER BY loc) LOOP
+    v_total_localidad := 0;
+    
+    DBMS_OUTPUT.PUT_LINE('Localidad: ' || loc_rec.loc);
+
+    FOR dept_rec IN (SELECT DISTINCT deptno, dname FROM dept WHERE deptno IN (SELECT DISTINCT deptno FROM emp WHERE loc = loc_rec.loc) ORDER BY dname) LOOP
+      v_total_departamento := 0;
+
+      DBMS_OUTPUT.PUT_LINE('  Departamento: ' || dept_rec.dname);
+
+      FOR emp_rec IN (SELECT ename, comm FROM emp WHERE loc = loc_rec.loc AND deptno = dept_rec.deptno ORDER BY ename) LOOP
+        v_total_departamento := v_total_departamento + NVL(emp_rec.comm, 0);
+        DBMS_OUTPUT.PUT_LINE('    ' || emp_rec.ename || ' ....... Comisión ' || NVL(emp_rec.comm, 0));
+      END LOOP;
+
+      IF v_total_departamento = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('    No hay empleados con comisiones en este departamento.');
+      ELSE
+        DBMS_OUTPUT.PUT_LINE('    Total Comisiones en el Departamento ' || dept_rec.dname || ': ' || v_total_departamento);
+      END IF;
+
+      v_total_localidad := v_total_localidad + v_total_departamento;
+    END LOOP;
+
+    IF v_total_localidad = 0 THEN
+      DBMS_OUTPUT.PUT_LINE('  No hay empleados con comisiones en esta localidad.');
+    ELSE
+      DBMS_OUTPUT.PUT_LINE('  Total Comisiones en la Localidad ' || loc_rec.loc || ': ' || v_total_localidad);
+    END IF;
+
+    v_total_empresa := v_total_empresa + v_total_localidad;
+  END LOOP;
+
+  DBMS_OUTPUT.PUT_LINE('Total Comisiones en la Empresa: ' || v_total_empresa);
+
+  FOR emp_rec IN (SELECT ename, comm FROM emp WHERE NVL(comm, 0) > 10000) LOOP
+    DBMS_OUTPUT.PUT_LINE('¡Advertencia! ' || emp_rec.ename || ' tiene una comisión mayor que 10000.');
+  END LOOP;
+END;
+/
+```
+
+### No funciona bien

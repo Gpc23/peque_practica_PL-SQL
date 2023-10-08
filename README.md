@@ -313,3 +313,82 @@ END;
 ```
 
 ### No funciona bien
+
+
+## 10. Realiza un procedimiento que reciba el nombre de una tabla y muestre los nombres de las restricciones que tiene, a qué columna afectan y en qué consisten exactamente. (DBA_TABLES, DBA_CONSTRAINTS, DBA_CONS_COLUMNS)
+
+```
+CREATE OR REPLACE PROCEDURE mostrar_restricciones(
+    p_table_name IN VARCHAR2
+) IS
+BEGIN
+    FOR constraint_info IN (
+        SELECT c.constraint_name, 
+               c.constraint_type,
+               cols.column_name,
+               c.search_condition
+        FROM user_constraints c
+        JOIN user_cons_columns cols ON c.constraint_name = cols.constraint_name
+        WHERE c.table_name = p_table_name
+    ) 
+    LOOP
+        DBMS_OUTPUT.PUT_LINE('Nombre de Restricción: ' || constraint_info.constraint_name);
+        DBMS_OUTPUT.PUT_LINE('Tipo de Restricción: ' || constraint_info.constraint_type);
+        DBMS_OUTPUT.PUT_LINE('Columna Afectada: ' || constraint_info.column_name);
+        DBMS_OUTPUT.PUT_LINE('Condición: ' || constraint_info.search_condition);
+        DBMS_OUTPUT.PUT_LINE(' ');
+    END LOOP;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('La tabla ' || p_table_name || ' no tiene restricciones.');
+END;
+/
+
+exec mostrar_restricciones('EMP');
+```
+
+[![10.png](https://i.postimg.cc/50jrbj6M/10.png)](https://postimg.cc/hzWs0DLC)
+
+
+## 11. Realiza al menos dos de los ejercicios anteriores en Postgres usando PL/pgSQL.
+
+[![11.png](https://i.postimg.cc/Y0WyLV6n/11.png)](https://postimg.cc/D47ctxYL)
+
+Y añadimos los inserts que no hice captura de eso.
+
+## 11.1
+
+```
+CREATE or replace PROCEDURE mostrar_empleado() AS $$
+DECLARE
+    v_nombre emp.ename%type;
+    v_salario emp.sal%type;
+BEGIN
+    select ename,sal into v_nombre,v_salario from emp where empno=7782;
+    RAISE NOTICE 'El nombre del empleado es %, y su salario es %', v_nombre,v_salario;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL mostrar_empleado();
+```
+
+[![11-1.png](https://i.postimg.cc/Ss5vsqMY/11-1.png)](https://postimg.cc/S26rTBVm)
+
+
+## 11.2
+
+```
+CREATE OR REPLACE PROCEDURE mostrar_empleado2 (p_empno emp.empno%TYPE) AS $$
+DECLARE
+    v_nombre emp.ename%type;
+    v_salario emp.sal%type;
+BEGIN
+    SELECT ename, sal INTO v_nombre, v_salario FROM emp WHERE empno = p_empno;
+    RAISE NOTICE 'El nombre del empleado es %, y su salario es %', v_nombre, v_salario;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL mostrar_empleado2(7900);
+```
+
+[![11-2.png](https://i.postimg.cc/sfQLLBkY/11-2.png)](https://postimg.cc/yWKngNYx)
